@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>منصة OLA لصناعة العملات</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root { --bg:#f3f4f6; --card:#ffffff; --ink:#111827; --muted:#6b7280; --brand:#d4af37; --ok:#16a34a; --danger:#dc2626; --line:#e5e7eb; --warn:#f59e0b;}
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, Tahoma, sans-serif; background: var(--bg); color: var(--ink); padding: 20px; min-height: 100vh;}
+  .wrap { max-width: 600px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;}
+  .hidden { display: none !important; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  input, select, button, textarea { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #f9fafb; color: var(--ink); font-size: 16px; margin-bottom: 12px; outline: none; transition: 0.2s; font-family: inherit;}
+  input:focus, select:focus, textarea:focus { border-color: var(--brand); background: #fff;}
+  button { background: var(--brand); color: #000; font-weight: bold; cursor: pointer; border: none; }
+  button:active { transform: scale(0.98); }
+  button.danger { background: var(--danger); color: white; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--brand); }
+  .banner { padding:12px; border-radius:12px; border:1px solid var(--warn); background: #fffbeb; margin-bottom:10px; }
+  
+  /* تعديل أزرار التنقل لتظهر جميعها بدون سحب */
+  .nav-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; justify-content: center; }
+  .nav-tabs button { flex: 1 1 calc(33.33% - 8px); min-width: 90px; margin: 0; background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 10px 4px; font-size: 13px; white-space: normal; line-height: 1.4; text-align: center;}
+  .nav-tabs button.active { background: var(--brand); color: #000; font-weight: bold; border-color: var(--brand); }
+  
+  /* عملاتي */
+  .coin-item { border: 1px solid var(--line); padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; background: #fafafa; cursor: pointer;}
+  .coin-item:hover { border-color: var(--brand); background: #fff; }
+  .coin-info { display: flex; align-items: center; gap: 10px; }
+  .coin-logo { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+  .coin-info h4 { margin: 0 0 5px 0; color: #111827;}
+  .coin-info p { margin: 0; font-size: 12px; color: var(--muted); }
+  
+  /* الإحصائيات */
+  .stats-box { display: flex; gap: 10px; margin-bottom: 15px; }
+  .stat-card { flex: 1; background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 8px; text-align: center; }
+  .stat-card h5 { margin: 0 0 5px 0; color: #1e40af; font-size: 12px; }
+  .stat-card span { font-weight: bold; color: #1d4ed8; direction: ltr; display: block;}
+  .treasury-box { background: #fdf4ff; border: 1px solid #f5d0fe; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: center;}
+  
+  /* الرفع */
+  .upload-group { display: flex; gap: 10px; margin-bottom: 12px; }
+  .upload-group input { margin-bottom: 0; }
+  .btn-upload { background: var(--bg); border: 1px solid var(--line); color: var(--ink); width: auto; padding: 0 20px; white-space: nowrap; margin-bottom: 0; }
+  
+  /* الدليل */
+  .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+  .info-box h4 { margin: 0 0 10px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;}
+  .info-box p { font-size: 13.5px; margin: 0 0 10px 0; line-height: 1.6; color: #334155; }
+  .info-box ul { margin: 0; padding-right: 20px; font-size: 13.5px; color: #334155; line-height: 1.6;}
+  .info-box li { margin-bottom: 8px; }
+  
+  /* الإدخال */
+  .input-group { position: relative; width: 100%; margin-bottom: 12px; }
+  .input-group input { margin-bottom: 0; padding-left: 70px; }
+  .btn-max { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); background: #d946ef; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; width: auto; margin-bottom: 0;}
+  
+  /* المودال */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 15px; backdrop-filter: blur(5px); }
+  .receipt-card { background: var(--card); border: 2px solid var(--brand); border-radius: 16px; padding: 25px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .receipt-icon { font-size: 50px; color: var(--brand); margin-bottom: 10px; }
+  .receipt-title { color: var(--brand); font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+  .info-box-modal { background: rgba(0,0,0,0.03); border: 1px solid var(--line); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: right; }
+  .info-row-modal { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; border-bottom: 1px dashed var(--line); padding-bottom: 8px;}
+  .info-row-modal:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+  .info-label { color: var(--muted); }
+  .info-value { font-weight: bold; color: var(--ink); }
+
+  /* تصميم قسم مراكز الخدمة */
+  .dist-card { background: #f9fafb; border: 1px solid var(--line); border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+  .official-title { display: inline-block; background: #fffbeb; color: #b45309; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; border: 1px solid #fef08a;}
+  .payment-box { background: #fff; padding: 10px; border-radius: 8px; font-size: 13px; color: var(--ink); margin-top: 5px; border: 1px dashed var(--line); white-space: pre-wrap; line-height: 1.6; }
+  .actions-dist { display: flex; gap: 10px; margin-top: 15px; }
+  .btn-dist { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: bold; text-decoration: none; cursor: pointer; border: none; display: flex; justify-content: center; align-items: center;}
+  .btn-wa { background: #25D366; color: #fff; }
+  .btn-proof { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- الشعار -->
+  <div style="text-align: center; margin-bottom: 25px; margin-top: 10px;">
+    <img src="https://i.ibb.co/PZzRT8sX/4115316-ico.png" alt="OLA Logo" style="width: 130px; height: auto; border-radius: 50%; box-shadow: 0 6px 15px rgba(0,0,0,0.08);">
+  </div>
+
+  <!-- صفحة عرض عملة عامة -->
+  <div id="public-coin-view" class="card hidden">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img id="pub-logo" src="" style="width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--brand); box-shadow: 0 5px 15px rgba(0,0,0,0.1); object-fit: cover;">
+      <h2 style="margin: 10px 0 5px 0; color: var(--ink);"><span id="pub-name"></span></h2>
+      <span style="background: #fef08a; color: #a16207; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; letter-spacing: 1px;" id="pub-symbol"></span>
+    </div>
+    <div class="info-box-modal" style="background: #f8fafc;">
+      <div class="info-row-modal"><span class="info-label">الإصدار الأول (الإنتاج)</span><span class="info-value" id="pub-supply" style="direction: ltr;">0</span></div>
+      <div class="info-row-modal"><span class="info-label">قوة التعدين الإجمالية</span><span class="info-value" id="pub-hash" style="color: #15803d; direction: ltr;">0 H/s</span></div>
+      <div class="info-row-modal"><span class="info-label">حجم السيولة (الدولار)</span><span class="info-value" id="pub-liq-usd" style="color: var(--ok); direction: ltr;">0 $</span></div>
+      <div class="info-row-modal"><span class="info-label">حجم سيولة العملة</span><span class="info-value" id="pub-liq-coin" style="color: var(--brand); direction: ltr;">0</span></div>
+    </div>
+    <button onclick="goToLogin()" style="margin-top: 10px;">الدخول إلى منصة OLA</button>
+  </div>
+
+  <!-- شاشة الدخول -->
+  <div id="login-view" class="card">
+    <h2 style="color:var(--brand); text-align:center; margin-top:0;">منصة OLA للعملات</h2>
+    <input id="login-ola" placeholder="رقم حساب OLA" dir="ltr" style="text-align:right;">
+    <input id="login-pass" type="password" placeholder="كلمة السر">
+    <button id="btn-login">تسجيل الدخول</button>
+    <button id="btn-go-register" class="ghost" style="margin-top:5px;">إنشاء حساب جديد</button>
+    <div id="login-status" style="text-align:center; font-size:14px; margin-top:10px;"></div>
+  </div>
+
+  <!-- شاشة التسجيل -->
+  <div id="register-view" class="card hidden">
+    <h3 style="color:var(--brand); margin-top:0;">إنشاء حساب جديد</h3>
+    <div class="grid2">
+      <input id="in-name" placeholder="الاسم الكامل"/>
+      <input id="in-dob" placeholder="تاريخ الميلاد"/>
+      <input id="in-country" placeholder="البلد"/>
+      <input id="in-city" placeholder="المدينة"/>
+      <input id="in-job" placeholder="المهنة"/>
+      <select id="in-gender"><option value="">اختر الجنس</option><option value="male">ذكر</option><option value="female">أنثى</option></select>
+      <input id="in-pass" type="password" placeholder="كلمة السر"/>
+      <input id="in-pass-confirm" type="password" placeholder="تأكيد كلمة السر"/>
+    </div>
+    <div class="banner">
+      <h4 style="margin:0 0 8px 0; color:#b45309;">سؤال الأمان الإلزامي</h4>
+      <div style="font-weight:bold; margin-bottom:8px; color:#92400e;" id="lbl-sec-q">جاري التوليد...</div>
+      <input id="in-sec-a" placeholder="أدخل إجابتك هنا" style="background:#fff;">
+    </div>
+    <button id="btn-register">إنشاء الحساب والمنصة</button>
+    <button id="btn-cancel-register" class="ghost danger">رجوع</button>
+    <div id="reg-status" style="margin-top:8px; text-align:center; font-weight:bold; color:var(--warn);"></div>
+  </div>
+
+  <!-- المنصة الرئيسية -->
+  <div id="platform-view" class="hidden">
+    <div style="background:var(--bg); border:1px solid var(--line); padding:10px; border-radius:8px; text-align:center; font-weight:bold; margin-bottom:15px; direction:ltr;">
+      الرصيد: <span id="user-ola" style="color:var(--brand);">0</span> OLA | <span id="user-usdt" style="color:var(--ok);">0</span> $
+    </div>
+    
+    <!-- تم تعديل الأزرار لتعمل بدون تمرير أفقي -->
+    <div class="nav-tabs">
+      <button id="tab-create" class="active">✨ إطلاق عملة</button>
+      <button id="tab-mycoins">📂 عملاتي</button>
+      <button id="tab-centers">🏦 المراكز المعتمدة</button>
+      <button id="tab-guide">📖 الدليل</button>
+      <button id="tab-contact">✉️ الإدارة</button>
+    </div>
+
+    <!-- قسم الإطلاق -->
+    <div class="card" id="sec-create">
+      <h3 style="margin-top:0;">إطلاق عملة جديدة</h3>
+      <input id="coin-name" placeholder="اسم العملة (مثال: Moon Coin)">
+      <input id="coin-symbol" placeholder="رمز العملة (مثال: MOON)" style="text-transform: uppercase;">
+      <div style="font-size:13px; color:var(--muted); margin-bottom:5px;">شعار العملة:</div>
+      <div class="upload-group">
+        <input id="coin-logo-url" placeholder="رابط URL" dir="ltr" style="text-align:right;">
+        <button type="button" id="btn-trigger-file" class="btn-upload">رفع صورة</button>
+        <input type="file" id="coin-logo-file" accept="image/*" class="hidden">
+      </div>
+      <div id="file-name-display" style="font-size: 12px; color: var(--ok); margin-bottom: 12px; display: none;"></div>
+      <input id="coin-supply" type="number" placeholder="الإنتاج الأولي (العدد المراد تصنيعه)" dir="ltr" style="text-align:right;">
+      <div style="font-size:12px; color:var(--warn); margin-bottom:10px; line-height:1.5;">* العملات التي تقوم بإنشائها ستصل فوراً إلى محفظتك. لاحقاً لا يمكنك تعديل الاسم أو الرمز أو الشعار إلا بموافقة الإدارة لضمان مصداقية العملة.</div>
+      <div style="background: #fffbeb; border:1px solid #fef08a; padding: 10px; border-radius: 8px; margin-bottom: 15px; direction: rtl;">
+        التكلفة: <b id="cost-display" style="color:#b45309; direction: ltr; display: inline-block;">0</b> <b>OLA</b>
+      </div>
+      <button id="btn-create">إنشاء العملة وتحويلها لمحفظتي</button>
+      <div id="create-status" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
+    </div>
+
+    <!-- إدارة عملاتي -->
+    <div class="card hidden" id="sec-mycoins">
+      <h3 style="margin-top:0;">العملات التي تملكها</h3>
+      <div id="my-coins-list"></div>
+      
+      <div id="manage-panel" class="hidden" style="margin-top:20px; border-top:2px dashed var(--line); padding-top:20px;">
+        <h3 style="color:var(--brand); margin-top:0;">لوحة تحكم: <span id="manage-symbol"></span></h3>
+        
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:15px; border-radius:10px; margin-bottom:15px; text-align: center;">
+          <h4 style="margin-top:0; margin-bottom:8px; color:#166534;">💸 صندوق أرباح العملة المتراكمة</h4>
+          <p style="font-size:12px; color:#15803d; margin:0 0 10px 0;">تتجمع أرباحك هنا تلقائياً من عمليات التداول والتحويل التي تتم على عملتك في السوق.</p>
+          <div style="font-size:28px; font-weight:bold; color:#16a34a; direction:ltr; margin-bottom:12px;" id="profit-bal">0 OLA</div>
+          <button id="btn-withdraw-profit" style="background:#16a34a; color:white;">سحب الأرباح لمحفظتي</button>
+        </div>
+
+        <div class="stats-box">
+          <div class="stat-card"><h5>سيولة الدولار ($)</h5><span id="stat-usd">0</span></div>
+          <div class="stat-card"><h5>سيولة العملة</h5><span id="stat-coin">0</span></div>
+          <div class="stat-card" style="background:#fdf4ff; border-color:#f5d0fe;"><h5 style="color:#86198f;">سرعة التعدين</h5><span id="stat-hash" style="color:#a21caf;">0 H/s</span></div>
+        </div>
+        
+        <div class="treasury-box">
+          <h4 style="margin:0 0 5px 0; color:#86198f;">⛏️ الخزينة العامة للتعدين</h4>
+          <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">العداد يعمل حياً بناءً على سرعة التعدين.</div>
+          <div style="font-size:26px; font-weight:bold; color:#a21caf; margin-bottom:15px; direction:ltr;" id="treasury-bal">0</div>
+          <div class="input-group">
+            <button class="btn-max" id="btn-withdraw-all">الجميع</button>
+            <input id="withdraw-amount" type="number" placeholder="المبلغ المراد سحبه" dir="ltr" style="text-align:right;">
+          </div>
+          <button id="btn-withdraw" style="background:#d946ef; color:white;">سحب إلى محفظتي</button>
+        </div>
+        
+        <div style="background:#f9fafb; border:1px solid var(--line); padding:15px; border-radius:10px; margin-bottom:15px;">
+          <h4 style="margin-top:0; color:var(--brand);">إدراج العملة ودعم السيولة</h4>
+          <input id="liq-usd" type="number" placeholder="دولار (الأدنى 10$)" dir="ltr" style="text-align:right;">
+          <input id="liq-coin" type="number" placeholder="مقابلها من عملتك" dir="ltr" style="text-align:right;">
+          <button id="btn-liq" style="background:#0284c7; color:#fff;">إضافة وإدراج العملة</button>
+        </div>
+
+        <div style="background:#f9fafb; border:1px solid var(--line); padding:15px; border-radius:10px; margin-bottom:15px;">
+          <h4 style="margin-top:0;">شراء مناجم التعدين</h4>
+          <p style="font-size:12px; color:#d97706; margin-top:0; font-weight:bold;">* يتم تفعيل سرعة التعدين مدى الحياة.</p>
+          <input id="miner-usd" type="number" placeholder="المبلغ بـ USDT" dir="ltr" style="text-align:right;">
+          <button id="btn-miner" style="background:var(--ok); color:#fff;">تفعيل التعدين مدى الحياة</button>
+        </div>
+
+        <div style="background:#fffbeb; border:1px solid #fef08a; padding:15px; border-radius:10px;">
+          <h4 style="margin-top:0; color:#b45309;"></> كود بوابة الدفع (Widget)</h4>
+          <div style="position: relative;">
+            <textarea id="embed-code" readonly style="width:100%; height:90px; direction:ltr; text-align:left; font-family:monospace; font-size:12px; background:#fff; border:1px solid #fde047; padding:10px; border-radius:8px; resize:none;" onclick="this.select()"></textarea>
+            <button id="btn-copy-widget" onclick="copyWidgetCode()" style="background:#ca8a04; color:#fff; font-size:13px; padding:8px; margin-top:8px;">📋 نسخ الكود</button>
+          </div>
+        </div>
+
+        <button id="btn-close-manage" class="ghost" style="margin-top:15px;">إغلاق اللوحة</button>
+      </div>
+    </div>
+
+    <!-- قسم مراكز خدمة الزبائن -->
+    <div class="card hidden" id="sec-centers">
+      <div style="text-align:center; margin-bottom: 20px;">
+        <h3 style="color:var(--brand); margin: 0 0 5px 0; font-size:20px;">مراكز خدمة الزبائن (OLA)</h3>
+        <p style="color:var(--muted); font-size:14px; margin:0;">تواصل مع وكلائنا المعتمدين بأمان واشحن رصيدك بسهولة</p>
+      </div>
+      
+      <input type="text" id="search-bar" placeholder="🔍 ابحث عن مركز، مدينة، أو طريقة دفع..." onkeyup="filterDistributors()">
+      
+      <div id="distributors-container">
+        <div style="text-align:center; color:var(--muted)">جاري تحميل قائمة المراكز...</div>
+      </div>
+    </div>
+
+    <!-- قسم الدليل الشامل -->
+    <div class="card hidden" id="sec-guide">
+      <h3 style="margin-top:0; color:var(--brand); border-bottom: 2px solid var(--line); padding-bottom: 10px;">الدليل الشامل لاستخدام عملتك</h3>
+      
+      <div class="info-box" style="border-right: 4px solid #3b82f6;">
+        <h4 style="color: #1d4ed8;">✨ 1. إصدار العملة</h4>
+        <p>الخطوة الأولى هي إطلاق عملتك. إذا اخترت إصدار 50 مليون مثلاً، ستدفع مقابلها 50 مليون OLA وستحصل عليها <b>فوراً ومباشرة في محفظتك</b>. هذا العدد ليس نهائياً، بل يمكن لعملتك أن تصل مستقبلاً إلى مليارات الحبات من خلال التعدين.</p>
+        <p style="color: #dc2626; font-size:12px; font-weight:bold; background:#fee2e2; padding:8px; border-radius:6px; margin-top:8px;">ملاحظة: لضمان مصداقية العملة في السوق، لا يمكنك تعديل (الاسم، الرمز، الشعار) من لوحتك. لتعديلها يجب التواصل مع الإدارة وتقديم سبب وجيه.</p>
+      </div>
+
+      <div class="info-box" style="border-right: 4px solid #8b5cf6;">
+        <h4 style="color: #6d28d9;">⛏️ 2. التعدين والخزينة</h4>
+        <p>العملات لا تأتي من العدم، بل يتم استخراجها عبر "التعدين".</p>
+        <ul>
+          <li>كلما زادت <b>قوة التعدين</b> الخاصة بك، زادت سرعة تدفق العملات الجديدة، مما يوفر عليك الوقت في تلبية طلبات السوق.</li>
+          <li>تتجمع العملات المستخرجة في <b>الخزينة العامة</b>، ويمكنك في أي وقت سحبها لمحفظتك.</li>
+        </ul>
+      </div>
+
+      <div class="info-box" style="border-right: 4px solid #f59e0b; background: #fffbeb;">
+        <h4 style="color: #b45309;">🚀 3. السيولة وتحديد السعر (نصائح ذهبية)</h4>
+        <p>يتم تحديد سعر عملتك عبر <b>السيولة</b> (المبلغ الدولاري مقابل كمية من عملتك).</p>
+        <ul>
+          <li><b>للتجربة:</b> النظام يسمح بإضافة <b>10$ فقط</b> لفهم آلية التداول.</li>
+          <li><b>لعملة قوية:</b> يُنصح بألا تقل السيولة عن <b>100$</b> لحماية عملتك من الانهيار السعري إذا قام أحدهم بالبيع.</li>
+          <li><b>إدارة الاحتياطي:</b> لا تضع كل ما تملكه من دولار أو عملات في السيولة دفعة واحدة! احتفظ باحتياطي جيد في محفظتك لدعم السعر لاحقاً.</li>
+          <li><b>تلبية الطلب:</b> احرص على وضع كمية كافية من عملتك في السيولة لتلبي طلبات المشترين.</li>
+        </ul>
+      </div>
+
+      <div class="info-box" style="border-right: 4px solid #334155; background: #f8fafc;">
+        <h4 style="color: #0f172a;">🎯 4. السعر الثابت (بدون سيولة)</h4>
+        <p>إذا كنت ترغب بـ <b>سعر ثابت</b> ولا تملك رأس مال للسيولة:</p>
+        <ul>
+          <li>لا تقم بإضافة سيولة. بدلاً من ذلك، تواصل مع الإدارة لإنشاء <b>لوحة تحكم خارجية خاصة بك</b>، حيث تبيع عملاتك لزبائنك بسعر ثابت تحدده أنت عبر بوابتك.</li>
+        </ul>
+      </div>
+
+      <div class="info-box" style="border-right: 4px solid #f43f5e; background: #fff1f2;">
+        <h4 style="color: #e11d48;">💰 5. أرباح العملة والأسهم (تمثيل الأصول)</h4>
+        <p>عملتك هي <b>أصل مالي</b> يمكن أن يمثل أسهماً لشركتك، أو حصصاً في منتجاتك (شاي، قهوة، سكر، زجاج، أو أي خدمة).</p>
+        <ul>
+          <li>تحصل على <b>1%</b> من رسوم أي عملية تحويل لعملتك بين أي مستخدمين.</li>
+          <li>تحصل على <b>1%</b> من رسوم أي عملية تداول (تبديل) تتم على عملتك.</li>
+          <li>هذه الأرباح تتجمع في صندوقك ويمكنك سحبها متى شئت.</li>
+        </ul>
+      </div>
+
+      <div class="info-box" style="border-right: 4px solid #10b981; background: #f0fdf4;">
+        <h4 style="color: #047857;">🌐 6. سيناريوهات المشاريع الرقمية</h4>
+        <ul>
+          <li><b>المشاريع:</b> أنشئ (تطبيق دردشة، منصة إعلانات، أو ألعاب)، واجعل عملتك هي العصب المالي للدفع والهدايا.</li>
+          <li><b>تطوير البرمجيات (OLA):</b> إذا لم يكن لديك فريق برمجي، يمكنك الاستعانة بخدمات <b>OLA البرمجية</b> لبناء مشروعك بـ <b>نصف تكلفة السوق</b>، وسيكون مربوطاً بعملتك فوراً.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- قسم الدعم والتواصل -->
+    <div class="card hidden" id="sec-contact">
+      <h3 style="margin-top:0; color:var(--brand);">تواصل مع الإدارة (الدعم الفني)</h3>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:15px;">لطلب تعديل بيانات العملة (الاسم، الرمز، الشعار) يرجى ذكر السبب الوجيه أدناه، أو راسلنا لأي استفسار وبرمجة المشاريع الخاصة.</p>
+      
+      <input id="contact-subject" placeholder="عنوان الرسالة (مثال: طلب تعديل شعار عملة / طلب برمجة تطبيق)">
+      <textarea id="contact-msg" placeholder="اكتب تفاصيل طلبك والسبب هنا..." style="height:120px; resize:vertical;"></textarea>
+      
+      <button id="btn-send-msg" style="background:#0284c7; color:white;">إرسال الرسالة للإدارة</button>
+      <div id="msg-status" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
+    </div>
+
+    <button id="btn-logout" class="danger" style="margin-top: 15px; width:100%;">تسجيل الخروج من المنصة</button>
+  </div>
+</div>
+
+<!-- إيصال سحب الأرباح / المعاملات -->
+<div id="receipt-modal" class="modal-overlay hidden">
+  <div class="receipt-card">
+    <div class="receipt-icon">🧾</div>
+    <div class="receipt-title">إيصال معاملة</div>
+    <div class="info-box-modal">
+      <div class="info-row-modal"><span class="info-label">معرف المعاملة (TX)</span><span class="info-value" id="rec-tx" dir="ltr" style="font-family:monospace; color:var(--brand); word-break:break-all;">—</span></div>
+      <div class="info-row-modal"><span class="info-label">نوع العملية</span><span class="info-value" id="rec-action">—</span></div>
+      <div class="info-row-modal"><span class="info-label">المبلغ المُعالج</span><span class="info-value" id="rec-amount" style="color:var(--ok); direction:ltr;">—</span></div>
+      <div class="info-row-modal"><span class="info-label">الرسوم</span><span class="info-value" id="rec-fee" style="color:var(--danger); direction:ltr;">—</span></div>
+      <div class="info-row-modal"><span class="info-label">التاريخ</span><span class="info-value" id="rec-date" dir="ltr">—</span></div>
+    </div>
+    <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" style="width:100%;">إغلاق الإيصال</button>
+  </div>
+</div>
+
+<!-- مودال إرسال إيصال الدفع للموزع -->
+<div id="proof-modal" class="modal-overlay hidden">
+  <div class="receipt-card" style="padding:20px; max-width:400px; text-align:right;">
+    <h3 style="color:var(--brand);margin-top:0; text-align:center;">إرسال إيصال دفع للمركز</h3>
+    <input type="hidden" id="modal-dist-ola">
+    <label style="font-weight:bold; font-size:13px; color:var(--muted); margin-bottom:5px; display:block;">اسمك أو رقم حسابك (OLA):</label>
+    <input type="text" id="modal-customer" placeholder="مثال: أحمد أو OLA-12345">
+    
+    <label style="font-weight:bold; font-size:13px; color:var(--muted); margin-bottom:5px; display:block;">المبلغ المتوقع (OLA):</label>
+    <input type="number" id="modal-amount" placeholder="مثال: 50" dir="ltr" style="text-align:right;">
+    
+    <label style="font-weight:bold; font-size:13px; color:var(--muted); margin-bottom:5px; display:block;">صورة الإيصال:</label>
+    <input type="file" id="modal-file" accept="image/*" style="background:#fff; padding:10px;">
+    
+    <button id="btn-submit-proof" onclick="submitProof()" style="width:100%; margin-bottom:10px;">📤 إرسال الإيصال</button>
+    <button class="ghost danger" style="width:100%; margin-bottom:0;" onclick="document.getElementById('proof-modal').classList.add('hidden')">إلغاء</button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "http://167.86.106.111:8000";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE"; 
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentOla = null, currentBalance = 0, currentUsdt = 0;
+  let selectedCoin = null;
+  let currentTreasury = 0, currentProfit = 0;
+  let uploadedImageBase64 = "";
+  let miningInterval = null;
+  let currentSecurityQuestion = "";
+  const securityQuestionsList = [ "ما هو اسم والدك؟", "ما هو لونك المفضل؟" ];
+
+  function convertArabicNumbersToEnglish(text) {
+    if (!text) return text;
+    const arabic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    const english = ['0','1','2','3','4','5','6','7','8','9'];
+    arabic.forEach((a,i)=> text = text.replaceAll(a, english[i]));
+    return text;
+  }
+  
+  ['login-ola', 'coin-supply', 'liq-usd', 'liq-coin', 'miner-usd', 'withdraw-amount', 'modal-amount'].forEach(id => {
+      let el = document.getElementById(id);
+      if(el) el.addEventListener("input", function() { this.value = convertArabicNumbersToEnglish(this.value); });
+  });
+
+  const tabs = ['create', 'mycoins', 'centers', 'guide', 'contact'];
+  tabs.forEach(tab => {
+      document.getElementById(`tab-${tab}`).onclick = () => {
+          tabs.forEach(t => { document.getElementById(`tab-${t}`).classList.remove('active'); document.getElementById(`sec-${t}`).classList.add('hidden'); });
+          document.getElementById(`tab-${tab}`).classList.add('active'); document.getElementById(`sec-${tab}`).classList.remove('hidden');
+          if(tab === 'mycoins') loadMyCoins(); 
+          if(tab === 'centers') loadDistributors(); 
+      };
+  });
+
+  function showReceipt(txId, actionText, amount, fee, currency) {
+      document.getElementById("rec-tx").textContent = txId;
+      document.getElementById("rec-action").textContent = actionText;
+      document.getElementById("rec-amount").textContent = `${Number(amount).toLocaleString('en-US', {maximumFractionDigits:4})} ${currency}`;
+      document.getElementById("rec-fee").textContent = `${Number(fee).toLocaleString('en-US', {maximumFractionDigits:4})} ${currency}`;
+      document.getElementById("rec-date").textContent = new Date().toLocaleString('ar-EG');
+      document.getElementById("receipt-modal").classList.remove("hidden");
+  }
+
+  document.getElementById("btn-go-register").onclick = () => {
+      currentSecurityQuestion = securityQuestionsList[Math.floor(Math.random() * securityQuestionsList.length)];
+      document.getElementById("lbl-sec-q").textContent = currentSecurityQuestion;
+      document.getElementById("login-view").classList.add("hidden");
+      document.getElementById("register-view").classList.remove("hidden");
+  };
+  document.getElementById("btn-cancel-register").onclick = () => {
+      document.getElementById("register-view").classList.add("hidden");
+      document.getElementById("login-view").classList.remove("hidden");
+  };
+
+  function generateOLAID(){
+      const rand = Math.floor(Math.random()*900000000)+100000000;
+      const day  = Math.floor((Date.now()/(1000*60*60*24))%365);
+      return `OLA ${rand}-${day}`;
+  }
+
+  document.getElementById("btn-register").onclick = async () => {
+      const name = document.getElementById("in-name").value.trim();
+      const dob = document.getElementById("in-dob").value.trim();
+      const country = document.getElementById("in-country").value.trim();
+      const city = document.getElementById("in-city").value.trim();
+      const job = document.getElementById("in-job").value.trim();
+      const gender = document.getElementById("in-gender").value;
+      const pass = document.getElementById("in-pass").value.trim();
+      const passConf = document.getElementById("in-pass-confirm").value.trim();
+      const secA = document.getElementById("in-sec-a").value.trim();
+      const out = document.getElementById("reg-status");
+
+      if (!name || !dob || !country || !city || !job || !gender || !pass || !secA) return out.textContent = "⚠️ الرجاء ملء جميع الحقول.";
+      if (pass !== passConf) return out.textContent = "⚠️ كلمتا السر غير متطابقتين.";
+
+      const ola = generateOLAID();
+      out.textContent = "⏳ جارٍ إنشاء الحساب والمنصة...";
+      
+      const expires = new Date(); expires.setFullYear(expires.getFullYear() + 100);
+      const { error } = await client.from("profiles").insert([{
+          full_name: name, dob_text: dob, country: country, city: city, job_title: job, gender: gender,
+          ola_id: ola, balance: 0, usdt_balance: 0, vip_level: 1, vip_expires_on: expires.toISOString().split("T")[0],
+          is_banned: false, password: pass, security_question: currentSecurityQuestion, security_answer: secA
+      }]);
+      
+      if (error) return out.textContent = "❌ خطأ في الاتصال بالخادم.";
+      
+      out.textContent = "✅ تم إنشاء الحساب. رقمك: " + ola;
+      setTimeout(() => { performLogin(ola, pass); }, 1500);
+  };
+
+  window.copyWidgetCode = function() {
+      const codeElement = document.getElementById("embed-code");
+      codeElement.select();
+      codeElement.setSelectionRange(0, 99999); 
+      navigator.clipboard.writeText(codeElement.value).then(() => {
+          const btn = document.getElementById("btn-copy-widget");
+          btn.innerText = "✅ تم نسخ الكود بنجاح!";
+          btn.style.background = "var(--ok)";
+          setTimeout(() => { btn.innerText = "📋 نسخ الكود"; btn.style.background = "#ca8a04"; }, 2500);
+      }).catch(err => { alert("فشل النسخ، يرجى النسخ يدوياً."); });
+  };
+  
+  window.copyCoinLink = function(link) {
+      navigator.clipboard.writeText(link).then(() => { alert("✅ تم نسخ رابط العملة بنجاح!"); });
+  };
+
+  document.getElementById("btn-trigger-file").onclick = () => document.getElementById("coin-logo-file").click();
+  document.getElementById("coin-logo-file").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = function(event) { uploadedImageBase64 = event.target.result; document.getElementById("file-name-display").textContent = "تم إرفاق: " + file.name; document.getElementById("file-name-display").style.display = "block";};
+          reader.readAsDataURL(file);
+      }
+  });
+
+  document.getElementById("btn-send-msg").onclick = async () => {
+      const subject = document.getElementById("contact-subject").value.trim();
+      const msg = document.getElementById("contact-msg").value.trim();
+      const st = document.getElementById("msg-status");
+
+      if(!subject || !msg) return st.textContent = "⚠️ الرجاء كتابة العنوان والتفاصيل.";
+      
+      st.style.color = "var(--ink)";
+      st.textContent = "⏳ جاري إرسال الرسالة...";
+
+      try {
+          const { error } = await client.from("admin_messages").insert([{
+              sender_ola_id: currentOla,
+              subject: subject,
+              message: msg
+          }]);
+          
+          if(error) throw error;
+          
+          st.style.color = "var(--ok)";
+          st.textContent = "✅ تم إرسال رسالتك للإدارة بنجاح!";
+          document.getElementById("contact-subject").value = "";
+          document.getElementById("contact-msg").value = "";
+          setTimeout(() => { st.textContent = ""; }, 3000);
+      } catch (err) {
+          st.style.color = "var(--danger)";
+          st.textContent = "❌ حدث خطأ، يرجى التأكد من اتصالك.";
+      }
+  };
+
+  window.goToLogin = function() {
+      document.getElementById("public-coin-view").classList.add("hidden");
+      document.getElementById("login-view").classList.remove("hidden");
+      window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
+  async function loadPublicCoinData(symbol) {
+      document.getElementById("login-view").classList.add("hidden");
+      document.getElementById("platform-view").classList.add("hidden");
+      document.getElementById("public-coin-view").classList.remove("hidden");
+
+      const { data: coin } = await client.from("custom_coins").select("*").eq("symbol", symbol).maybeSingle();
+      if(!coin) { alert("هذه العملة غير موجودة!"); return goToLogin(); }
+
+      document.getElementById("pub-logo").src = coin.logo || "https://i.ibb.co/v4tN7K0/default-coin.png";
+      document.getElementById("pub-name").textContent = coin.name;
+      document.getElementById("pub-symbol").textContent = coin.symbol;
+      document.getElementById("pub-supply").textContent = Math.floor(coin.total_supply).toLocaleString('en-US');
+
+      const { data: liq } = await client.from("coin_liquidity").select("*").eq("coin_symbol", symbol).maybeSingle();
+      if(liq) {
+          document.getElementById("pub-liq-usd").textContent = Math.floor(liq.usdt_reserve).toLocaleString('en-US') + " $";
+          document.getElementById("pub-liq-coin").textContent = Math.floor(liq.coin_reserve).toLocaleString('en-US');
+      } else {
+          document.getElementById("pub-liq-usd").textContent = "غير مدرجة بعد";
+          document.getElementById("pub-liq-usd").style.color = "var(--muted)";
+          document.getElementById("pub-liq-coin").textContent = "غير مدرجة بعد";
+          document.getElementById("pub-liq-coin").style.color = "var(--muted)";
+      }
+
+      const { data: miners } = await client.from("coin_miners").select("hash_power").eq("coin_symbol", symbol);
+      let totalHash = 0;
+      if(miners && miners.length > 0) { miners.forEach(m => { totalHash += Number(m.hash_power || 0); }); }
+      document.getElementById("pub-hash").textContent = Math.floor(totalHash).toLocaleString('en-US') + " H/s";
+  }
+
+  // ميزة النفق الآمن وعرض إعلان الشكر عند تسجيل الدخول
+  async function showAdTunnel(onComplete) {
+      try {
+          // جلب الإعلانات من قاعدة البيانات
+          const res = await fetch(SUPABASE_URL + '/rest/v1/ola_ads?active=eq.true&select=*', { 
+              headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } 
+          });
+          let ads = await res.json();
+          
+          if (!ads || ads.length === 0) { if(onComplete) onComplete(); return; }
+
+          ads = ads.sort(() => 0.5 - Math.random()).slice(0, 1); 
+          
+          let currentAdIndex = 0;
+          let timerInterval = null;
+
+          const overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999999; display:flex; justify-content:center; align-items:center; flex-direction:column; backdrop-filter:blur(5px);';
+          document.body.appendChild(overlay);
+
+          const badge = document.createElement('div');
+          badge.innerText = 'إعلان ممول OLA';
+          badge.style.cssText = 'position:absolute; top:20px; left:20px; background:rgba(212,175,55,0.9); color:#000; padding:6px 12px; border-radius:6px; font-family:Tahoma, sans-serif; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.3); z-index:1000000;';
+          badge.onclick = (e) => { e.stopPropagation(); window.open('https://ola1994om-code.github.io/OLA12/', '_blank'); };
+          overlay.appendChild(badge);
+
+          // رسالة الشكر الترحيبية من OLA
+          const thankYouMsg = document.createElement('div');
+          thankYouMsg.innerText = 'شريكنا العزيز.. شكراً لاستخدامك منصات OLA الرقمية لبناء المستقبل.';
+          thankYouMsg.style.cssText = 'position:absolute; top:80px; width:90%; text-align:center; color:#d4af37; font-size:18px; font-weight:bold; text-shadow:0 2px 4px rgba(0,0,0,0.8); z-index:1000000; line-height:1.5; font-family:Tahoma, sans-serif; animation: fadeInOut 5s ease-in-out;';
+          overlay.appendChild(thankYouMsg);
+
+          const timerUI = document.createElement('div');
+          timerUI.style.cssText = 'position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.6); color:#fff; padding:8px 20px; border-radius:20px; font-family:Tahoma, sans-serif; font-size:16px; font-weight:bold; border:1px solid #fff; z-index:1000000; direction:ltr;';
+          overlay.appendChild(timerUI);
+
+          const skipBtn = document.createElement('button');
+          skipBtn.style.cssText = 'position:absolute; top:20px; right:20px; width:auto; margin:0; padding:8px 20px; background:#e53935; color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:20px; cursor:pointer; font-family:Tahoma, sans-serif; font-size:14px; font-weight:bold; display:none; z-index:1000000;';
+          overlay.appendChild(skipBtn);
+
+          const visitBtn = document.createElement('button');
+          visitBtn.innerText = '🌐 زيارة صفحة المعلن';
+          visitBtn.style.cssText = 'position:absolute; bottom:40px; padding:12px 25px; background:#16a34a; color:#ffffff; border:2px solid #fff; border-radius:30px; cursor:pointer; font-family:Tahoma, sans-serif; font-size:16px; font-weight:bold; display:block; box-shadow:0 4px 15px rgba(0,0,0,0.5); z-index:1000000; width:auto; max-width:90%; margin:0;';
+          overlay.appendChild(visitBtn);
+
+          const unmuteBtn = document.createElement('button');
+          unmuteBtn.innerHTML = '🔇';
+          unmuteBtn.style.cssText = 'position:absolute; bottom:40px; right:20px; background:rgba(0,0,0,0.7); color:#fff; border:1px solid rgba(255,255,255,0.3); width:50px; height:50px; margin:0; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; font-size:22px; z-index:1000000; box-shadow:0 4px 10px rgba(0,0,0,0.5); display:none;';
+          overlay.appendChild(unmuteBtn);
+
+          const mediaCont = document.createElement('div');
+          mediaCont.style.cssText = 'width:100%; height:60%; margin-top:20px; display:flex; justify-content:center; align-items:center; cursor:pointer;';
+          overlay.appendChild(mediaCont);
+
+          function playCurrentAd() {
+              const ad = ads[currentAdIndex];
+              mediaCont.innerHTML = ''; 
+              skipBtn.style.display = 'none';
+              timerUI.style.display = 'block';
+              unmuteBtn.style.display = 'none';
+              skipBtn.innerText = (currentAdIndex === 0 && ads.length > 1) ? 'التالي ⏭' : 'دخول المنصة ⏭';
+
+              if (ad.ad_type === 'video') {
+                  const vid = document.createElement('video');
+                  vid.src = ad.media_url; 
+                  vid.style.cssText = 'max-width:90%; max-height:100%; object-fit:contain; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid var(--brand);';
+                  vid.autoplay = true; vid.muted = true; vid.playsInline = true;
+                  mediaCont.appendChild(vid);
+                  unmuteBtn.style.display = 'flex';
+                  unmuteBtn.onclick = (e) => { e.stopPropagation(); vid.muted = !vid.muted; unmuteBtn.innerHTML = vid.muted ? '🔇' : '🔊'; };
+              } else {
+                  const img = document.createElement('img');
+                  img.src = ad.media_url;
+                  img.style.cssText = 'max-width:90%; max-height:100%; object-fit:contain; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid var(--brand);';
+                  mediaCont.appendChild(img);
+              }
+
+              visitBtn.onclick = (e) => { e.stopPropagation(); if(ad.target_url) window.open(ad.target_url, '_blank'); };
+              skipBtn.onclick = (e) => {
+                  e.stopPropagation(); currentAdIndex++;
+                  if (currentAdIndex < ads.length) playCurrentAd(); else { document.body.removeChild(overlay); if(onComplete) onComplete(); }
+              };
+
+              let timeLeft = 6;
+              timerUI.innerText = timeLeft;
+              if(timerInterval) clearInterval(timerInterval);
+              timerInterval = setInterval(() => {
+                  timeLeft--;
+                  if(timeLeft <= 0) { clearInterval(timerInterval); timerUI.style.display = 'none'; skipBtn.style.display = 'block'; thankYouMsg.style.display = 'none';}
+                  else { timerUI.innerText = timeLeft; }
+              }, 1000);
+          }
+          playCurrentAd();
+      } catch (err) { console.error("Ad Tunnel Error:", err); if(onComplete) onComplete(); }
+  }
+
+  async function performLogin(ola, pass) {
+      const st = document.getElementById("login-status");
+      st.textContent = "⏳ جارٍ التحقق من الحساب...";
+      const { data } = await client.from("profiles").select("*").eq("ola_id", ola).single();
+      
+      if(data && data.password === pass) {
+          currentOla = data.ola_id; 
+          currentBalance = data.balance || 0; 
+          currentUsdt = data.usdt_balance || 0;
+          localStorage.setItem("ola_launchpad_session", JSON.stringify({ola_id: ola, pass: pass}));
+          
+          st.textContent = "⏳ يتم توجيهك للمنصة عبر النفق الآمن...";
+          
+          showAdTunnel(() => {
+              document.getElementById("login-view").classList.add("hidden");
+              document.getElementById("register-view").classList.add("hidden");
+              document.getElementById("platform-view").classList.remove("hidden");
+              
+              document.getElementById("user-ola").textContent = Math.floor(currentBalance).toLocaleString('en-US');
+              document.getElementById("user-usdt").textContent = Math.floor(currentUsdt).toLocaleString('en-US');
+              loadMyCoins();
+          });
+      } else { 
+          st.textContent = "❌ بيانات تسجيل الدخول غير صحيحة.";
+      }
+  }
+
+  window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetCoin = urlParams.get('coin');
+      
+      if(targetCoin) {
+          loadPublicCoinData(targetCoin.toUpperCase());
+      } else {
+          const savedSession = localStorage.getItem("ola_launchpad_session");
+          if(savedSession) { const creds = JSON.parse(savedSession); performLogin(creds.ola_id, creds.pass); }
+      }
+  };
+  
+  document.getElementById("btn-login").onclick = () => { performLogin(document.getElementById("login-ola").value.trim().toUpperCase(), document.getElementById("login-pass").value.trim()); };
+  document.getElementById("btn-logout").onclick = () => { localStorage.removeItem("ola_launchpad_session"); location.reload(); };
+
+  document.getElementById("coin-supply").addEventListener("input", (e) => {
+      document.getElementById("cost-display").textContent = (parseFloat(e.target.value) || 0).toLocaleString('en-US');
+  });
+
+  document.getElementById("btn-create").onclick = async () => {
+      const name = document.getElementById("coin-name").value.trim();
+      const symbol = document.getElementById("coin-symbol").value.trim().toUpperCase();
+      const supply = parseFloat(document.getElementById("coin-supply").value);
+      const finalLogo = uploadedImageBase64 || document.getElementById("coin-logo-url").value.trim() || "https://i.ibb.co/v4tN7K0/default-coin.png";
+      const st = document.getElementById("create-status");
+      
+      if(!name || !symbol || !supply || supply <= 0) return st.textContent = "⚠️ الرجاء إدخال بيانات صحيحة";
+      if(currentBalance < supply) return st.textContent = "❌ رصيد OLA غير كافٍ!";
+
+      st.textContent = "⏳ جاري الإنشاء...";
+      try {
+          await client.from("profiles").update({ balance: currentBalance - supply }).eq("ola_id", currentOla);
+          const { error: err2 } = await client.from("custom_coins").insert([{ owner_ola_id: currentOla, name: name, symbol: symbol, logo: finalLogo, total_supply: supply, is_listed: false, profits_ola: 0 }]);
+          if (err2) throw err2;
+          await client.from("token_balances").insert([{ ola_id: currentOla, symbol: symbol, balance: supply }]);
+          currentBalance -= supply;
+          document.getElementById("user-ola").textContent = Math.floor(currentBalance).toLocaleString('en-US');
+          st.textContent = "✅ تم الإنشاء وتحويل العملات لمحفظتك!"; st.style.color="var(--ok)";
+          setTimeout(() => { st.textContent = ""; document.getElementById("tab-mycoins").click(); }, 2000);
+      } catch (err) { st.textContent = "❌ الرمز مستخدم مسبقاً أو تعذر الاتصال."; }
+  };
+
+  async function loadMyCoins() {
+      const list = document.getElementById("my-coins-list");
+      list.innerHTML = "جاري التحميل...";
+      document.getElementById("manage-panel").classList.add("hidden");
+      const { data } = await client.from("custom_coins").select("*").eq("owner_ola_id", currentOla);
+      if(!data || data.length === 0) return list.innerHTML = `لم تنشئ أي عملة بعد.`;
+      list.innerHTML = "";
+      const currentUrl = window.location.origin + window.location.pathname;
+      data.forEach(coin => {
+          let statusText = coin.is_listed ? "<span style='color:var(--ok); font-weight:bold;'>مدرجة</span>" : "<span style='color:var(--danger);'>غير مدرجة</span>";
+          let coinId = coin.id || `OLA-TOK-${coin.symbol}`;
+          let coinLink = `${currentUrl}?coin=${coin.symbol}`;
+          list.innerHTML += `
+              <div class="coin-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div class="coin-info"><img src="${coin.logo || 'https://i.ibb.co/v4tN7K0/default-coin.png'}" class="coin-logo">
+                          <div><h4>${coin.name} (${coin.symbol}) - ${statusText}</h4><p>الإنتاج الأولي: ${Math.floor(coin.total_supply).toLocaleString('en-US')}</p></div>
+                      </div>
+                      <button style="width:auto; margin:0;" onclick="openManage('${coin.symbol}')">إدارة</button>
+                  </div>
+                  <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+                      <span style="direction: ltr; font-size:12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75%; color: #334155;">${coinLink}</span>
+                      <button class="ghost" style="width: auto; padding: 4px 10px; font-size: 11px; margin: 0; background: #fff;" onclick="copyCoinLink('${coinLink}')">نسخ الرابط</button>
+                  </div>
+              </div>`;
+      });
+  }
+
+  window.openManage = async function(symbol) {
+      selectedCoin = symbol;
+      document.getElementById("manage-symbol").textContent = symbol;
+      document.getElementById("manage-panel").classList.remove("hidden");
+      
+      const { data: cData } = await client.from("custom_coins").select("profits_ola").eq("symbol", symbol).maybeSingle();
+      currentProfit = cData ? Number(cData.profits_ola || 0) : 0;
+      document.getElementById("profit-bal").textContent = currentProfit.toLocaleString('en-US', {maximumFractionDigits: 4}) + " OLA";
+
+      const { data: liq } = await client.from("coin_liquidity").select("*").eq("coin_symbol", symbol).maybeSingle();
+      if(liq) {
+          document.getElementById("stat-usd").textContent = Math.floor(liq.usdt_reserve).toLocaleString('en-US');
+          document.getElementById("stat-coin").textContent = Math.floor(liq.coin_reserve).toLocaleString('en-US');
+      } else { document.getElementById("stat-usd").textContent = "0"; document.getElementById("stat-coin").textContent = "0"; }
+
+      const { data: miner } = await client.from("coin_miners").select("*").match({ owner_ola_id: currentOla, coin_symbol: symbol }).maybeSingle();
+      if(miner && miner.hash_power > 0) {
+          document.getElementById("stat-hash").textContent = Math.floor(miner.hash_power).toLocaleString('en-US') + " H/s";
+          let sec = Math.max(0, Math.floor((new Date().getTime() - new Date(miner.updated_at || miner.created_at).getTime()) / 1000));
+          currentTreasury = Number(miner.total_mined || 0) + (sec * Number(miner.hash_power));
+          document.getElementById("treasury-bal").textContent = Math.floor(currentTreasury).toLocaleString('en-US');
+          if(miningInterval) clearInterval(miningInterval);
+          miningInterval = setInterval(() => {
+              currentTreasury += Number(miner.hash_power);
+              document.getElementById("treasury-bal").textContent = Math.floor(currentTreasury).toLocaleString('en-US');
+          }, 1000);
+      } else { document.getElementById("stat-hash").textContent = "0 H/s"; document.getElementById("treasury-bal").textContent = "0"; }
+  };
+
+  document.getElementById("btn-close-manage").onclick = () => { document.getElementById("manage-panel").classList.add("hidden"); if(miningInterval) clearInterval(miningInterval); };
+
+  document.getElementById("btn-withdraw-profit").onclick = async () => {
+      if(currentProfit <= 0) return alert("ليس لديك أرباح حالياً للسحب.");
+      await client.from("custom_coins").update({ profits_ola: 0 }).eq("symbol", selectedCoin);
+      await client.from("profiles").update({ balance: currentBalance + currentProfit }).eq("ola_id", currentOla);
+      currentBalance += currentProfit; document.getElementById("user-ola").textContent = Math.floor(currentBalance).toLocaleString('en-US');
+      let wAmt = currentProfit;
+      currentProfit = 0; document.getElementById("profit-bal").textContent = "0 OLA";
+      showReceipt("TX-" + Math.floor(Math.random()*1000000), `سحب أرباح ${selectedCoin}`, wAmt, 0, 'OLA');
+  };
+
+  document.getElementById("btn-withdraw-all").onclick = () => {
+      document.getElementById("withdraw-amount").value = Math.floor(currentTreasury);
+      document.getElementById("withdraw-amount").dispatchEvent(new Event('input'));
+  };
+
+  document.getElementById("btn-withdraw").onclick = async () => {
+      const amt = parseFloat(document.getElementById("withdraw-amount").value);
+      if(!amt || amt <= 0) return alert("أدخل مبلغ صحيح");
+      if(amt > currentTreasury) return alert("الرصيد في الخزينة لا يكفي.");
+      
+      try {
+          const leftover = currentTreasury - amt;
+          await client.from("coin_miners").update({ total_mined: leftover, updated_at: new Date().toISOString() }).match({ owner_ola_id: currentOla, coin_symbol: selectedCoin });
+          
+          const { data: tb } = await client.from("token_balances").select("*").match({ola_id: currentOla, symbol: selectedCoin}).maybeSingle();
+          if(tb) {
+              await client.from("token_balances").update({ balance: Number(tb.balance) + amt }).match({ola_id: currentOla, symbol: selectedCoin});
+          } else {
+              await client.from("token_balances").insert([{ ola_id: currentOla, symbol: selectedCoin, balance: amt }]);
+          }
+          
+          const { data: txData } = await client.from("transactions").insert([{
+              from_ola: "MINING_TREASURY", to_ola: currentOla, amount: amt, fee: 0, action: `سحب من الخزينة (${selectedCoin})`, currency: selectedCoin
+          }]).select("id").single();
+
+          document.getElementById("withdraw-amount").value = "";
+          openManage(selectedCoin);
+          showReceipt(txData ? txData.id : "PENDING", `سحب تعدين ${selectedCoin}`, amt, 0, selectedCoin);
+      } catch(err) { alert("حدث خطأ أثناء السحب."); }
+  };
+
+  document.getElementById("btn-liq").onclick = async () => {
+      const usd = parseFloat(document.getElementById("liq-usd").value);
+      const coin = parseFloat(document.getElementById("liq-coin").value);
+      if(usd < 10) return alert("الحد الأدنى للسيولة هو 10 دولار");
+      if(!usd || !coin) return alert("أدخل الكميات");
+      if(currentUsdt < usd) return alert("رصيد USDT غير كافٍ. اشحن رصيدك من المراكز المعتمدة.");
+      
+      const { data: tb } = await client.from("token_balances").select("balance").match({ola_id: currentOla, symbol: selectedCoin}).single();
+      if(!tb || tb.balance < coin) return alert("لا تملك هذه الكمية من عملتك في محفظتك!");
+
+      await client.from("profiles").update({ usdt_balance: currentUsdt - usd }).eq("ola_id", currentOla);
+      await client.from("token_balances").update({ balance: tb.balance - coin }).match({ola_id: currentOla, symbol: selectedCoin});
+      
+      const { data: liqEx } = await client.from("coin_liquidity").select("*").eq("coin_symbol", selectedCoin).maybeSingle();
+      if(liqEx) {
+          await client.from("coin_liquidity").update({ usdt_reserve: Number(liqEx.usdt_reserve) + usd, coin_reserve: Number(liqEx.coin_reserve) + coin }).eq("coin_symbol", selectedCoin);
+      } else {
+          await client.from("coin_liquidity").insert([{ coin_symbol: selectedCoin, usdt_reserve: usd, coin_reserve: coin }]);
+      }
+      
+      await client.from("custom_coins").update({ is_listed: true }).eq("symbol", selectedCoin);
+      
+      const { data: txData } = await client.from("transactions").insert([{
+          from_ola: currentOla, to_ola: "LIQUIDITY_POOL", amount: usd, fee: 0, action: `إضافة سيولة لدعم (${selectedCoin})`, currency: 'USDT'
+      }]).select("id").single();
+
+      currentUsdt -= usd;
+      document.getElementById("user-usdt").textContent = Math.floor(currentUsdt).toLocaleString('en-US');
+      document.getElementById("liq-usd").value = "";
+      document.getElementById("liq-coin").value = "";
+      openManage(selectedCoin);
+      loadMyCoins();
+      showReceipt(txData ? txData.id : "PENDING", `دعم سيولة ${selectedCoin}`, usd, 0, 'USDT');
+  };
+
+  document.getElementById("btn-miner").onclick = async () => {
+      const usd = parseFloat(document.getElementById("miner-usd").value);
+      if(!usd) return alert("أدخل المبلغ");
+      if(currentUsdt < usd) return alert("رصيد USDT غير كافٍ.");
+      
+      await client.from("profiles").update({ usdt_balance: currentUsdt - usd }).eq("ola_id", currentOla);
+      
+      const { data: mEx } = await client.from("coin_miners").select("*").match({ owner_ola_id: currentOla, coin_symbol: selectedCoin }).maybeSingle();
+      if(mEx) {
+          let lastUpdate = new Date(mEx.updated_at || mEx.created_at).getTime();
+          let now = new Date().getTime();
+          let secondsPassed = Math.floor((now - lastUpdate) / 1000);
+          if (secondsPassed < 0) secondsPassed = 0;
+          let newTotalMined = Number(mEx.total_mined || 0) + (secondsPassed * Number(mEx.hash_power));
+
+          await client.from("coin_miners").update({ 
+              hash_power: Number(mEx.hash_power) + usd, total_mined: newTotalMined, updated_at: new Date().toISOString()
+          }).match({ owner_ola_id: currentOla, coin_symbol: selectedCoin });
+      } else {
+          await client.from("coin_miners").insert([{ 
+              owner_ola_id: currentOla, coin_symbol: selectedCoin, hash_power: usd, total_mined: 0, updated_at: new Date().toISOString()
+          }]);
+      }
+      
+      const { data: txData } = await client.from("transactions").insert([{
+          from_ola: currentOla, to_ola: "MINING_POOL", amount: usd, fee: 0, action: `شراء سرعة تعدين لـ (${selectedCoin})`, currency: 'USDT'
+      }]).select("id").single();
+
+      currentUsdt -= usd;
+      document.getElementById("user-usdt").textContent = Math.floor(currentUsdt).toLocaleString('en-US');
+      document.getElementById("miner-usd").value = "";
+      openManage(selectedCoin);
+      showReceipt(txData ? txData.id : "PENDING", `شراء تعدين ${selectedCoin}`, usd, 0, 'USDT');
+  };
+
+  /* ----- دوال قسم مراكز خدمة الزبائن ----- */
+  let allDist = [];
+
+  async function loadDistributors() {
+      const { data, error } = await client.from("profiles").select("ola_id, full_name, official_title, payment_methods, whatsapp_link").eq("is_approved", true).eq("country", "موزع معتمد");
+      if(error) return document.getElementById("distributors-container").innerHTML = "<p style='text-align:center;color:var(--danger)'>حدث خطأ في جلب البيانات.</p>";
+      allDist = data || [];
+      renderDistributors(allDist);
+  }
+
+  function renderDistributors(list) {
+      const box = document.getElementById("distributors-container"); box.innerHTML = "";
+      if(!list.length) return box.innerHTML = "<p style='text-align:center;color:var(--muted)'>لا يوجد مراكز خدمة حالياً.</p>";
+      list.forEach(d => {
+          box.innerHTML += `
+          <div class="dist-card">
+              <div class="official-title">🌟 ${d.official_title || "موزع معتمد"}</div>
+              <h2 style="margin-top:0; color:var(--ink);">${d.full_name}</h2>
+              <div style="font-size:15px; color:var(--muted);">
+                  <strong>طرق الدفع المتوفرة:</strong>
+                  <div class="payment-box" dir="ltr" style="text-align:right;">${d.payment_methods || "غير محدد"}</div>
+              </div>
+              <div class="actions-dist">
+                  <a href="${d.whatsapp_link||'#'}" target="_blank" class="btn-dist btn-wa">💬 تواصل واتساب</a>
+                  <button class="btn-dist btn-proof" onclick="openProofModal('${d.ola_id}')">📸 إرسال إيصال</button>
+              </div>
+          </div>`;
+      });
+  }
+
+  function filterDistributors() { 
+      const q = document.getElementById("search-bar").value.toLowerCase(); 
+      renderDistributors(allDist.filter(d => (d.full_name||'').toLowerCase().includes(q) || (d.payment_methods||'').toLowerCase().includes(q) || (d.official_title||'').toLowerCase().includes(q))); 
+  }
+
+  function openProofModal(id) { 
+      document.getElementById("modal-dist-ola").value = id; 
+      document.getElementById("proof-modal").classList.remove("hidden"); 
+  }
+
+  async function submitProof() {
+      const distOla = document.getElementById("modal-dist-ola").value, customer = document.getElementById("modal-customer").value, amount = document.getElementById("modal-amount").value, file = document.getElementById("modal-file").files[0];
+      if(!customer || !amount || !file) return alert("الرجاء تعبئة جميع الحقول وإرفاق الصورة.");
+      const btn = document.getElementById("btn-submit-proof"); btn.innerText = "⏳ جاري الإرسال..."; btn.disabled = true;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          const img = new Image(); 
+          img.onload = async function() {
+              const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); 
+              canvas.width = 800; canvas.height = img.height * (800 / img.width); 
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              
+              const { error } = await client.from("payment_proofs").insert([{ 
+                  dist_ola: distOla, 
+                  customer_name: customer, 
+                  amount: parseFloat(amount), 
+                  image_url: canvas.toDataURL('image/jpeg', 0.6) 
+              }]);
+              
+              btn.innerText = "📤 إرسال الإيصال"; btn.disabled = false;
+              if(error) alert("❌ خطأ: لم نتمكن من الإرسال. تأكد من اتصالك."); 
+              else { 
+                  alert("✅ تم إرسال الإيصال للمركز بنجاح!"); 
+                  document.getElementById('proof-modal').classList.add('hidden'); 
+                  document.getElementById("modal-customer").value = "";
+                  document.getElementById("modal-amount").value = "";
+                  document.getElementById("modal-file").value = "";
+              }
+          }; 
+          img.src = e.target.result;
+      }; 
+      reader.readAsDataURL(file);
+  }
+</script>
+</body>
+</html>
