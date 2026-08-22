@@ -559,7 +559,7 @@
       selectedCoin = symbol; document.getElementById("manage-symbol").textContent = symbol; document.getElementById("manage-panel").classList.remove("hidden");
       
       // --- توليد كود بوابة الدفع (Widget) تلقائياً ---
-      const walletDirectUrl = "https://ola1994om-code.github.io/OLA12/"; // الرابط الثابت للمحفظة
+      const walletDirectUrl = "https://ola1994om-code.github.io/OLA-MANE/"; // الرابط الثابت للمحفظة
       
       // جلب شعار العملة لوضعه في الودجت
       const { data: cData } = await client.from("custom_coins").select("logo").eq("symbol", symbol).maybeSingle();
