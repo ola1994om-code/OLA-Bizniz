@@ -559,7 +559,7 @@
       selectedCoin = symbol; document.getElementById("manage-symbol").textContent = symbol; document.getElementById("manage-panel").classList.remove("hidden");
       
       // --- توليد كود بوابة الدفع (Widget) تلقائياً ---
-      const currentUrl = window.location.origin + window.location.pathname.replace('maker.html', 'wallet.html'); // مسار المحفظة الافتراضي للتحويل
+      const walletDirectUrl = "https://ola1994om-code.github.io/OLA12/"; // الرابط الثابت للمحفظة
       
       // جلب شعار العملة لوضعه في الودجت
       const { data: cData } = await client.from("custom_coins").select("logo").eq("symbol", symbol).maybeSingle();
@@ -574,7 +574,7 @@
   <div style="font-size: 11px; color: #dc2626; margin-bottom: 12px; font-weight: bold; padding: 4px; background: #fee2e2; border-radius: 6px;">
     * تنبيه: هذه العملة مخصصة للمنظومة الداخلية ولا يمكن سحبها لمنصات خارجية.
   </div>
-  <a href="${currentUrl}" target="_blank" style="background: #16a34a; color: #fff; padding: 10px; text-decoration: none; border-radius: 8px; font-weight: bold; display: block; font-size: 13.5px; transition: 0.2s;">افتح محفظتك للتحويل</a>
+  <a href="${walletDirectUrl}" target="_blank" style="background: #16a34a; color: #fff; padding: 10px; text-decoration: none; border-radius: 8px; font-weight: bold; display: block; font-size: 13.5px; transition: 0.2s;">افتح محفظتك للتحويل</a>
 </div>`;
       document.getElementById("embed-code").value = widgetHTML;
       // ---------------------------------------------
