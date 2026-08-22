@@ -558,6 +558,27 @@
   window.openManage = async function(symbol) {
       selectedCoin = symbol; document.getElementById("manage-symbol").textContent = symbol; document.getElementById("manage-panel").classList.remove("hidden");
       
+      // --- توليد كود بوابة الدفع (Widget) تلقائياً ---
+      const currentUrl = window.location.origin + window.location.pathname.replace('maker.html', 'wallet.html'); // مسار المحفظة الافتراضي للتحويل
+      
+      // جلب شعار العملة لوضعه في الودجت
+      const { data: cData } = await client.from("custom_coins").select("logo").eq("symbol", symbol).maybeSingle();
+      const logoUrl = (cData && cData.logo) ? cData.logo : 'https://i.ibb.co/v4tN7K0/default-coin.png';
+      
+      const widgetHTML = `<!-- كود بوابة الدفع الخاصة بشبكة OLA -->
+<div style="border: 2px solid #d4af37; padding: 15px; border-radius: 12px; text-align: center; max-width: 280px; background: #fff; font-family: Tahoma, sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto;">
+  <img src="${logoUrl}" style="width: 55px; height: 55px; border-radius: 50%; margin-bottom: 10px; border: 1px solid #e5e7eb;">
+  <h3 style="margin: 0 0 10px 0; color: #07224e; font-size: 16px;">الدفع الآمن عبر OLA</h3>
+  <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; line-height: 1.5;">لإتمام الطلب، يرجى تحويل عملة <b>${symbol}</b> إلى حساب التاجر أدناه:</p>
+  <input type="text" value="${currentOla}" readonly style="width: 100%; text-align: center; padding: 10px; margin-bottom: 10px; border: 1px dashed #d4af37; border-radius: 8px; font-weight: bold; background: #fefce8; direction: ltr; color: #b45309; outline: none;" onclick="this.select()">
+  <div style="font-size: 11px; color: #dc2626; margin-bottom: 12px; font-weight: bold; padding: 4px; background: #fee2e2; border-radius: 6px;">
+    * تنبيه: هذه العملة مخصصة للمنظومة الداخلية ولا يمكن سحبها لمنصات خارجية.
+  </div>
+  <a href="${currentUrl}" target="_blank" style="background: #16a34a; color: #fff; padding: 10px; text-decoration: none; border-radius: 8px; font-weight: bold; display: block; font-size: 13.5px; transition: 0.2s;">افتح محفظتك للتحويل</a>
+</div>`;
+      document.getElementById("embed-code").value = widgetHTML;
+      // ---------------------------------------------
+
       let vaultId = `PROFIT_${symbol}`;
       const { data: pRow } = await client.from("token_balances").select("balance").match({ ola_id: vaultId, symbol: 'OLA' }).maybeSingle();
       currentProfit = pRow ? Number(pRow.balance) : 0;
